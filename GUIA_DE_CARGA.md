@@ -1,5 +1,12 @@
 # Guía de carga — Ejecutyx Cyber
 
+## Dos ZIP diferentes
+
+- `Ejecutyx-Cyber-Cloud-v2.1-codigo.zip`: código completo para GitHub. Netlify lo construye cuando conectas el repositorio.
+- `Ejecutyx-Cyber-Netlify-Demo.zip`: sitio ya construido para arrastrarlo directamente a **Netlify Drop / Deploy manually**. Abre en modo demostración y no necesita Cloud Run.
+
+No arrastres el ZIP de código completo al despliegue manual de Netlify: contiene TypeScript y carpetas de servidor que el navegador no puede ejecutar directamente.
+
 Sigue el orden indicado. No subas archivos individualmente a distintos servicios: **todo el proyecto va primero a GitHub** y cada plataforma toma de ahí lo que necesita.
 
 ## 1. GitHub — código completo
