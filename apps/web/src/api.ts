@@ -14,4 +14,8 @@ export const api={
   createDomain:(organizationId:string,domain:string)=>request("/v1/assets/domain",{method:"POST",body:JSON.stringify({organizationId,domain})}),
   verifyDomain:(id:string)=>request(`/v1/assets/${id}/verify`,{method:"POST"}),
   scanDomain:(id:string)=>request(`/v1/assets/${id}/scan`,{method:"POST"}),
+  resolveFinding:(id:string,status:"accepted"|"resolved"|"open")=>request(`/v1/findings/${id}`,{method:"PATCH",body:JSON.stringify({status})}),
+  createIncident:(organizationId:string,input:{title:string;description:string;severity:string})=>request("/v1/incidents",{method:"POST",body:JSON.stringify({organizationId,...input})}),
+  updateIncident:(id:string,status:"open"|"contained"|"resolved")=>request(`/v1/incidents/${id}`,{method:"PATCH",body:JSON.stringify({status})}),
+  updateOrganization:(id:string,input:{name:string;sector:string;employeeCount:number|null})=>request(`/v1/organizations/${id}`,{method:"PATCH",body:JSON.stringify(input)}),
 };

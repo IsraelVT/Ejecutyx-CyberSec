@@ -31,12 +31,54 @@ app.get("/v1/organizations", async (req, res) => {
 app.get("/v1/dashboard", async (req, res) => {
   const organizationId = z.string().uuid().safeParse(req.query.organizationId);
   if (!organizationId.success || !await requireMembership(req.userId!, organizationId.data)) return res.status(403).json({ error: "Acceso denegado." });
-  const [assets, scans, findings] = await Promise.all([
+  const [assets, scans, findings, incidents, audits] = await Promise.all([
     admin.from("assets").select("*").eq("organization_id", organizationId.data).order("created_at"),
     admin.from("scan_results").select("*").eq("organization_id", organizationId.data).order("scanned_at", { ascending: false }).limit(20),
     admin.from("findings").select("*").eq("organization_id", organizationId.data).order("detected_at", { ascending: false }),
+    admin.from("incidents").select("*").eq("organization_id", organizationId.data).order("created_at", { ascending: false }).limit(50),
+    admin.from("audit_events").select("*").eq("organization_id", organizationId.data).order("created_at", { ascending: false }).limit(50),
   ]);
-  res.json({ assets: assets.data ?? [], history: scans.data ?? [], findings: findings.data ?? [] });
+  res.json({ assets: assets.data ?? [], history: scans.data ?? [], findings: findings.data ?? [], incidents: incidents.data ?? [], audits: audits.data ?? [] });
+});
+
+app.patch("/v1/organizations/:id", async (req, res) => {
+  const member = await requireMembership(req.userId!, req.params.id);
+  if (!member || !["owner", "admin"].includes(member.role)) return res.status(403).json({ error: "Se requiere rol administrador." });
+  const parsed = z.object({ name: z.string().trim().min(2).max(80), sector: z.string().trim().max(80), employeeCount: z.number().int().positive().nullable() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Datos de empresa inválidos." });
+  const { data, error } = await admin.from("organizations").update({ name: parsed.data.name, sector: parsed.data.sector || null, employee_count: parsed.data.employeeCount }).eq("id", req.params.id).select().single();
+  if (error) return res.status(400).json({ error: "No pudimos actualizar la empresa." });
+  await admin.from("audit_events").insert({ organization_id: req.params.id, actor_user_id: req.userId, action: "organization.updated", target_type: "organization", target_id: req.params.id });
+  res.json({ organization: data });
+});
+
+app.patch("/v1/findings/:id", async (req, res) => {
+  const parsed = z.object({ status: z.enum(["open", "accepted", "resolved"]) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Estado inválido." });
+  const { data: finding } = await admin.from("findings").select("*").eq("id", req.params.id).maybeSingle();
+  if (!finding || !await requireMembership(req.userId!, finding.organization_id)) return res.status(404).json({ error: "Riesgo no encontrado." });
+  const { data } = await admin.from("findings").update({ status: parsed.data.status, resolved_at: parsed.data.status === "resolved" ? new Date().toISOString() : null }).eq("id", finding.id).select().single();
+  await admin.from("audit_events").insert({ organization_id: finding.organization_id, actor_user_id: req.userId, action: `finding.${parsed.data.status}`, target_type: "finding", target_id: finding.id });
+  res.json({ finding: data });
+});
+
+app.post("/v1/incidents", async (req, res) => {
+  const parsed = z.object({ organizationId: z.string().uuid(), title: z.string().trim().min(3).max(140), description: z.string().trim().max(3000), severity: z.enum(["critical", "high", "medium", "low"]) }).safeParse(req.body);
+  if (!parsed.success || !await requireMembership(req.userId!, parsed.data.organizationId)) return res.status(403).json({ error: "Solicitud no autorizada." });
+  const { data, error } = await admin.from("incidents").insert({ organization_id: parsed.data.organizationId, title: parsed.data.title, description: parsed.data.description, severity: parsed.data.severity, created_by: req.userId }).select().single();
+  if (error) return res.status(400).json({ error: "No pudimos registrar el incidente." });
+  await admin.from("audit_events").insert({ organization_id: parsed.data.organizationId, actor_user_id: req.userId, action: "incident.created", target_type: "incident", target_id: data.id });
+  res.status(201).json({ incident: data });
+});
+
+app.patch("/v1/incidents/:id", async (req, res) => {
+  const parsed = z.object({ status: z.enum(["open", "contained", "resolved"]) }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Estado inválido." });
+  const { data: incident } = await admin.from("incidents").select("*").eq("id", req.params.id).maybeSingle();
+  if (!incident || !await requireMembership(req.userId!, incident.organization_id)) return res.status(404).json({ error: "Incidente no encontrado." });
+  const { data } = await admin.from("incidents").update({ status: parsed.data.status, resolved_at: parsed.data.status === "resolved" ? new Date().toISOString() : null }).eq("id", incident.id).select().single();
+  await admin.from("audit_events").insert({ organization_id: incident.organization_id, actor_user_id: req.userId, action: `incident.${parsed.data.status}`, target_type: "incident", target_id: incident.id });
+  res.json({ incident: data });
 });
 
 app.post("/v1/assets/domain", async (req, res) => {

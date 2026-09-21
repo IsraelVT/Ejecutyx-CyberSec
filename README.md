@@ -1,6 +1,19 @@
-# Ejecutyx Cyber Cloud
+# Ejecutyx Cyber Cloud v2
 
-Versión portable de Ejecutyx Cyber para Netlify, Supabase, Google Cloud Run y GitHub.
+Aplicación completa del MVP comercial de Ejecutyx Cyber para PyMEs mexicanas. La empresa de demostración es **TestCompCy**.
+
+## Incluye
+
+- Acceso sin contraseña mediante Supabase Auth.
+- Separación multiempresa con PostgreSQL RLS.
+- Dashboard y CyberScore externo.
+- Inventario y verificación DNS de dominios.
+- Análisis defensivo de HTTPS, SPF, DMARC y encabezados.
+- Gestión del ciclo de vida de riesgos.
+- CyberCoach con pasos de corrección.
+- Registro, contención y resolución de incidentes.
+- Historial de análisis y bitácora de auditoría.
+- Perfil de empresa, roles y diseño adaptable a celular/tablet.
 
 ## Arquitectura
 
@@ -23,7 +36,9 @@ Desde la raíz ejecuta: npm install, npm run typecheck y npm run build.
 ## 2. Configurar Supabase
 
 1. Crea un proyecto.
-2. En SQL Editor ejecuta supabase/migrations/202609200001_initial.sql.
+2. En SQL Editor ejecuta, en este orden:
+   - `supabase/migrations/202609200001_initial.sql`
+   - `supabase/migrations/202609210002_product_modules.sql`
 3. En Authentication habilita Email.
 4. Agrega la URL local y la URL de Netlify como Redirect URLs.
 5. Utiliza una llave publishable para el navegador y una llave secret únicamente para Cloud Run.
@@ -48,7 +63,7 @@ Desde services/api:
       --concurrency 5 \
       --timeout 300 \
       --min-instances 0 \
-      --max-instances 10 \
+      --max-instances 3 \
       --set-env-vars SUPABASE_URL=https://TU_PROYECTO.supabase.co,WEB_ORIGIN=https://TU_SITIO.netlify.app \
       --set-secrets SUPABASE_SECRET_KEY=ejecutyx-supabase-secret:latest
 
@@ -62,6 +77,10 @@ Agrega VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY y VITE_API_URL en Netlif
 
 No agregues la llave secreta de Supabase a Netlify ni uses el prefijo VITE_ para secretos.
 
+## Guía de instalación
+
+Abre `GUIA_DE_CARGA.md`. Contiene la ruta exacta para GitHub, Supabase, Google Cloud y Netlify, pensada para hacerse desde una tablet.
+
 ## Flujo funcional incluido
 
 1. Acceso mediante magic link.
@@ -72,12 +91,12 @@ No agregues la llave secreta de Supabase a Netlify ni uses el prefijo VITE_ para
 6. Escaneo defensivo de HTTPS, SPF, DMARC y headers.
 7. CyberScore, hallazgos, historial y auditoría.
 
-## Límites de este MVP
+## Límites deliberados de seguridad
 
 - El escaneo se ejecuta de forma síncrona.
 - No incluye Nmap, escaneo de puertos ni explotación.
 - No analiza DKIM porque el selector debe conocerse.
 - No incluye todavía Cloud Tasks ni Cloud Run Jobs.
-- Administración de miembros y facturación quedan para otro sprint.
+- Invitaciones de equipo, suscripciones y pruebas ofensivas quedan para fases posteriores.
 
 Antes de ampliar el scanner, agrega Cloud Tasks, idempotencia por job_id, límites por organización, presupuestos de concurrencia y autorización explícita por tipo de prueba.
